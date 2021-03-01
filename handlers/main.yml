@@ -1,0 +1,6 @@
+---
+# handlers file for netdata-straight
+- name: restart netdata
+  service:
+    name: netdata
+    state: restarted

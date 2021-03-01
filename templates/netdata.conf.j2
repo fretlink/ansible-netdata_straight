@@ -1,0 +1,6 @@
+{% for (section,configuration) in netdata_config | dictsort %}
+[{{ section }}]
+{% for (key,value) in configuration | dictsort %}
+    {{ key }} = {{ value }}
+{% endfor %}
+{% endfor %}

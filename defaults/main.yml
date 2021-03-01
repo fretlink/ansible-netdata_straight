@@ -1,0 +1,29 @@
+---
+# Force installation even if netdata is already installed
+netdata_force_install: false
+netdata_installer: kickstart
+netdata_install_options: "--disable-telemetry"
+netdata_uninstall_before: no
+netdata_prefix: "{{ (netdata_installer == 'kickstart') | ternary('','/opt/netdata') }}"
+# A dict whcih reflect the wanted netdata.conf file
+netdata_config:
+  global:
+    history: 3996
+
+  web:
+    "listen to": 127.0.0.1
+
+# Define streaming configuration
+#netdata_streaming_configuration: {}
+netdata_streaming_configuration:
+  upstream:
+    destination: collector.example.com
+    "api key": XXXXXXX
+  downstreams:
+    - name: main
+      api_key: XXXXXXY
+
+# Define alarm notify configuration
+netdata_alarm_notify_configs: {}
+# Define a custom_sender function to be used in alarm configuration
+netdata_custom_sender_function: ""

@@ -1,0 +1,13 @@
+- name: Check uninstaller presence
+  stat:
+    path: "{{ item }}/netdata-uninstaller.sh"
+  loop:
+    - /usr/libexec/netdata
+    - /opt/netdata/usr/libexec/netdata
+  register: uninstaller_presence
+
+- name: Uninstall
+  command: "{{ item }} --yes --force" # noqa 301
+  loop: "{{ uninstallers }}"
+  vars:
+    uninstallers: "{{ uninstaller_presence.results | selectattr('stat.exists') | map(attribute='invocation.module_args.path') | list }}"

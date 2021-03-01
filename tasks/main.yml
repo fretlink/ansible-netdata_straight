@@ -1,0 +1,67 @@
+---
+- name: Install requirements (Debian family)
+  apt:
+    name: curl
+    state: present
+  when: ansible_os_family == 'Debian'
+
+- name: Install requirements (Redhat family)
+  yum:
+    name: curl
+    state: present
+  when: ansible_os_family == 'RedHat'
+
+- name: Check if netdata is installed
+  command: "{{ prefix }}netdata -V"
+  ignore_errors: true
+  register: netdata_installed_st
+  changed_when: false
+  vars:
+    prefix: "{{ netdata_prefix | ternary(netdata_prefix~'/bin/', '') }}"
+
+- name: Uninstall netdata
+  include: uninstall.yml
+  when:
+    - netdata_uninstall_before is defined
+    - netdata_uninstall_before | bool
+
+- name: Install netdata
+  shell:
+    cmd: bash <(curl -Ss https://my-netdata.io/{{ netdata_installer }}.sh) --dont-wait {{ netdata_install_options }}
+  args:
+    executable: /bin/bash
+  when:
+    - netdata_installed_st is failed or netdata_force_install or netdata_uninstall_before
+
+- name: Configure netdata
+  template:
+    src: netdata.conf.j2
+    dest: "{{ netdata_prefix }}/etc/netdata/netdata.conf"
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart netdata
+
+- name: Configure streaming
+  template:
+    src: stream.conf.j2
+    dest: "{{ netdata_prefix }}/etc/netdata/stream.conf"
+    owner: root
+    group: netdata
+    mode: 0640
+  when:
+    - netdata_streaming_configuration is defined
+    - netdata_streaming_configuration | count > 0
+  notify: restart netdata
+
+- name: Configure netdata alarm notifications
+  template:
+    dest: "{{ netdata_prefix }}/etc/netdata/health_alarm_notify.conf"
+    src: "health_alarm_notify.conf.j2"
+    owner: netdata
+    group: root
+    mode: 0640
+  when:
+    - netdata_alarm_notify_configs is defined
+    - netdata_alarm_notify_configs | count > 0
+  notify: restart netdata

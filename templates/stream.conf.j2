@@ -1,0 +1,15 @@
+{% if netdata_streaming_configuration.upstream is defined %}
+[stream]
+    enabled = yes
+    destination = {{ netdata_streaming_configuration.upstream["destination"] }}
+    api key = {{ netdata_streaming_configuration.upstream["api key"] }}
+{% endif %}
+{% if netdata_streaming_configuration.downstreams is defined %}
+{% for downstream in netdata_streaming_configuration.downstreams %}
+[{{ downstream.api_key }}]
+    enabled = yes
+{% for (key,value) in downstream | dictsort if not key in ['name','api_key'] %}
+    {{ key }} = {{ value }}
+{% endfor %}
+{% endfor %}
+{% endif %}

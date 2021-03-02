@@ -17,6 +17,8 @@ jobs:
           - ubuntu:18.04
           - ubuntu:20.04
           - debian:10
+          - centos:8
+          - fedora:latest
         netdata-installer:
           - kickstart
           - kickstart-static64

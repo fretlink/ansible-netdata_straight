@@ -1,0 +1,33 @@
+---
+name: test
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        molecule-os:
+          - ubuntu:18.04
+          - ubuntu:20.04
+          - debian:10
+          - centos:8
+          - fedora:latest
+        netdata-installer:
+          - kickstart
+          - kickstart-static64
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: "${{ github.repository }}"
+      - uses: gofrolist/molecule-action@v2
+        env:
+          MOLECULE_OS: ${{ matrix.molecule-os }}
+          MOLECULE_NETDATA_INSTALLER: ${{ matrix.netdata-installer }}

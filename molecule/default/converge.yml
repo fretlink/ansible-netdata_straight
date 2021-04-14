@@ -4,4 +4,4 @@
   tasks:
     - name: "Include netdata-straight"
       include_role:
-        name: "netdata_straight"
+        name: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | basename }}"

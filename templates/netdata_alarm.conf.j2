@@ -1,0 +1,21 @@
+{% for alarm in collector.alarm_config %}
+{% if alarm.template is defined -%}
+template: {{ alarm.template }}
+families: {{ alarm.families | default("*") }}
+{% else %}
+   alarm: {{ alarm.alarm | default( collector.name ) }}
+{% endif %}
+      on: {{ alarm.on_what }}
+      os: {{ alarm.os | default("*") }}
+   hosts: {{ alarm.os | default("*") }}
+  lookup: {{ alarm.lookup }}
+{% if alarm.calc is defined %}
+    calc: {{ alarm.calc }}
+{% endif %}
+   every: {{ alarm.every | default("1m") }}
+    warn: {{ alarm.warn | default("$status == $WARNING") }}
+    crit: {{ alarm.crit | default("$status == $CRITICAL") }}
+   delay: {{ alarm.delay | default("up 0 down 0 multiplier 1.0 max 0") }}
+      to: {{ alarm.to | default("silent") }}
+      
+{% endfor %}

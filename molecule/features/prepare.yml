@@ -1,0 +1,19 @@
+- name: Prepare
+  hosts: all
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+      become: true
+      when: ansible_os_family == 'Debian'
+    - name: Create fakegroup
+      group:
+        name: fakegroup
+        state: present
+    - name: Create fake conf file
+      copy:
+        content: "Test file"
+        dest: /etc/fakefile.conf
+        owner: root
+        group: root
+        mode: 0600

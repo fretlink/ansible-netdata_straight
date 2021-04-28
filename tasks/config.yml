@@ -1,0 +1,162 @@
+- name: Run specific tasks
+  include_tasks: "{{ item.specific_task_file }}"
+  when: item.specific_task_file is defined
+  loop: "{{ netdata_extra_config }}"
+
+- name: Configure plugins apt dependencies
+  apt:
+    name: "{{ netdata_plugins_apt }}"
+    state: present
+  vars:
+    netdata_plugins_apt: "{{ netdata_extra_config | map(attribute='apt_dependencies') |
+                          reject('undefined') | list | flatten | unique }}"
+  register: netdata_plugins_apt_deps_st
+  until: netdata_plugins_apt_deps_st is succeeded
+
+- name: Get list of pip dependencies
+  set_fact:
+    netdata_plugins_pip: "{{ netdata_extra_config | map(attribute='pip_dependencies') |
+                          reject('undefined') | list | flatten | unique }}"
+
+- name: Install pip for python dependencies
+  apt:
+    name: "{{ python_package }}"
+    state: present
+  when:
+    - netdata_plugins_pip|length > 0
+    - ansible_os_family == 'Debian'
+  vars:
+    python_package: "{{ netdata_pip_package[ansible_distribution ~ ansible_distribution_version] | default('python-pip') }}"
+  register: netdata_pip_install
+  until: netdata_pip_install is succeeded
+
+- name: Configure plugins pip dependencies
+  pip:
+    name: "{{ netdata_plugins_pip }}"
+    state: present
+  when: netdata_plugins_pip|length > 0
+  register: netdata_plugins_pip_deps_st
+  until: netdata_plugins_pip_deps_st is succeeded
+
+- name: Add netdata to extra groups
+  user:
+    name: netdata
+    groups: "{{ netdata_plugins_groups }}"
+    append: yes
+  notify: restart netdata
+  vars:
+    netdata_plugins_groups: "{{ netdata_extra_config | map(attribute='extra_groups') |
+                             reject('undefined') | list | flatten | unique }}"
+
+- name: Get list of files to grant read on
+  set_fact:
+    netdata_plugins_files: "{{ netdata_extra_config | map(attribute='read_files') |
+                             reject('undefined') | list | flatten | unique }}"
+
+- name: Install acl if files need to be granted access
+  apt:
+    name: acl
+    state: present
+  when: netdata_plugins_files|length > 0
+
+- name: Grant read acces to files
+  acl:
+    path: "{{ item }}"
+    entity: netdata
+    etype: user
+    permissions: r
+    state: present
+  notify: restart netdata
+  loop: "{{ netdata_plugins_files }}"
+
+- name: Configure plugins
+  copy:
+    dest: "{{ netdata_collector_conf_dir }}/{{ collector.name }}.conf"
+    content: "{{ content[collector.format | default('yaml')] }}"
+    mode: 0640
+    owner: netdata
+  when: collector.config is defined
+  notify: restart netdata
+  loop: "{{ netdata_extra_config }}"
+  loop_control:
+    loop_var: collector
+    label: "{{ collector.name }}"
+  vars:
+    netdata_collector_conf_dir: "/etc/netdata/{{ collector.type }}.d"
+    bash_content_tmp: "{{ collector.config.items() | sort | list | map('join','=') | list }}"
+    bash_content: "{{ bash_content_tmp | map('regex_replace','(.*)=(.*)',collector.name ~ '_\\1=\\2') | join('\n') }}"
+    yaml_content: "{{ collector.config | to_nice_yaml }}"
+    json_content: "{{ collector.config | to_nice_json }}"
+    content:
+      bash: "{{ bash_content ~ '\n' }}"
+      json: "{{ json_content }}"
+      yaml: "{{ yaml_content }}"
+  no_log: "{{ collector.no_log | default(false) }}"
+
+- name: Remove old config
+  file:
+    path: "{{ netdata_old_collector_conf_dir }}/{{ collector.name }}.conf"
+    state: absent
+  when: collector.replace is defined
+  notify: restart netdata
+  loop: "{{ netdata_extra_config }}"
+  loop_control:
+    loop_var: collector
+    label: "{{ collector.name }}"
+  vars:
+    netdata_old_collector_conf_dir: "/etc/netdata/{{ collector.replace }}.d"
+
+- name: Configure chart
+  copy:
+    dest: "{{ netdata_collector_chart_dir }}"
+    src: "{{ collector.chart_name }}.chart.sh"
+    mode: 0755
+    owner: netdata
+  when: collector.chart_name is defined
+  notify: restart netdata
+  loop: "{{ netdata_extra_config }}"
+  loop_control:
+    loop_var: collector
+    label: "{{ collector.name }}"
+  vars:
+    netdata_collector_chart_dir: "/usr/libexec/netdata/charts.d/"
+
+- name: Configure plugins health
+  template:
+    dest: "{{ netdata_health_conf_dir }}/{{ collector.name }}.conf"
+    src: health_template.j2
+    mode: 0640
+    owner: netdata
+  when: collector.health_config is defined
+  notify: restart netdata # a reload would be enough
+  loop: "{{ netdata_extra_config }}"
+  loop_control:
+    loop_var: collector
+    label: "{{ collector.name }}"
+
+- name: Configure overrides
+  copy:
+    dest: "{{ netdata_health_conf_dir }}/{{ override.name }}.conf"
+    content: |
+      # {{ override.name }}
+      {{ override.override }}
+    mode: 0640
+    owner: netdata
+  notify: reload netdata
+  loop: "{{ netdata_alarms_overrides }}"
+  loop_control:
+    loop_var: override
+    label: "{{ override.name }}"
+
+- name: Configure alarm
+  template:
+    dest: "{{ netdata_health_conf_dir }}/{{ collector.name }}.conf"
+    src: "netdata_alarm.conf.j2"
+    mode: 0755
+    owner: netdata
+  when: collector.alarm_config is defined
+  notify: restart netdata
+  loop: "{{ netdata_extra_config }}"
+  loop_control:
+    loop_var: collector
+    label: "{{ collector.name }}"

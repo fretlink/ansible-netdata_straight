@@ -9,7 +9,6 @@ netdata_prefix: "{{ (netdata_installer == 'kickstart') | ternary('','/opt/netdat
 netdata_config:
   global:
     history: 3996
-
   web:
     "listen to": 127.0.0.1
 

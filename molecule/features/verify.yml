@@ -1,0 +1,40 @@
+---
+# This is an example playbook to execute Ansible tests.
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Get netdata groups
+    command: id -Gzn
+    register: netdata_groups_st
+    become: true
+    become_user: netdata
+    changed_when: false
+
+  - name: Check file access
+    stat:
+      path: /etc/fakefile.conf
+    become: yes
+    become_user: netdata
+    register: netdata_stat_st
+
+  - name: Check pip package
+    command: test-pip-install
+    become: yes
+    become_user: netdata
+    changed_when: false
+
+  - name: Check apt package
+    command: rot13
+    args:
+      stdin: test
+    changed_when: false
+
+  - name: Asserts config was applied
+    assert:
+      that:
+        - "'fakegroup' in group_array"
+        - netdata_can_read
+    vars:
+      group_array: "{{ netdata_groups_st.stdout.split('\0') | reject('eq','') | list }}"
+      netdata_can_read: "{{ netdata_stat_st.stat.readable }}"

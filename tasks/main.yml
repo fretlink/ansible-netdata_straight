@@ -65,3 +65,7 @@
     - netdata_alarm_notify_configs is defined
     - netdata_alarm_notify_configs | count > 0
   notify: restart netdata
+
+- name: Configure netdata sensors
+  include_tasks: config.yml
+  when: (netdata_extra_config|length > 0) or (netdata_alarms_overrides|length > 0)

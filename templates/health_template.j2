@@ -1,0 +1,6 @@
+{% for template in collector.health_config %}
+template =  {{ template.name }}
+{% for config in template.definition %}
+{{ config }}
+{% endfor %}
+{% endfor %}

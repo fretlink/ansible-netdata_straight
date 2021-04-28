@@ -1,0 +1,21 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: instance-features
+    image: jrei/systemd-ubuntu:20.04
+    privileged: true
+    command: /lib/systemd/systemd
+    tmpfs:
+      - /run
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+provisioner:
+  name: ansible
+  inventory:
+    links:
+      host_vars: host_vars/
+verifier:
+  name: ansible

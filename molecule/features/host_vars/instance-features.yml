@@ -1,0 +1,11 @@
+netdata_installer: kickstart-static64
+netdata_extra_config:
+  - name: test user
+    extra_groups:
+      - fakegroup
+    read_files:
+      - /etc/fakefile.conf
+    pip_dependencies:
+      - test-pip-install
+    apt_dependencies:
+      - hxtools

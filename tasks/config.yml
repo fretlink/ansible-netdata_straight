@@ -59,7 +59,7 @@
     state: present
   when: netdata_plugins_files|length > 0
 
-- name: Grant read acces to files
+- name: Grant read access to files
   acl:
     path: "{{ item }}"
     entity: netdata
